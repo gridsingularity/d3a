@@ -190,13 +190,13 @@ class Market:
         if reverse_order:
             # Sorted bids in descending order
             return list(reversed(sorted(
-                obj.values(),
+                obj,
                 key=lambda b: b.energy_rate)))
 
         else:
             # Sorted bids in ascending order
             return list(sorted(
-                obj.values(),
+                obj,
                 key=lambda b: b.energy_rate))
 
     @property
@@ -215,9 +215,25 @@ class Market:
             self._avg_trade_price = round(price / energy, 4) if energy else 0
         return self._avg_trade_price
 
+    def sort_by_source(self, offs):
+
+        from d3a.d3a_core.util import make_iaa_name
+        from collections import deque
+
+        retval = deque()
+        for o in offs:
+            if o.seller == make_iaa_name(self):
+                retval.append(o)
+            else:
+                retval.appendleft(o)
+        return list(retval)
+
     @property
     def sorted_offers(self):
-        return self.sorting(self.offers)
+        from copy import copy
+        offers = copy(list(self.offers.values()))
+        offers = self.sort_by_source(offers)
+        return self.sorting(reversed(offers))
 
     @property
     def most_affordable_offers(self):

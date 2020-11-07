@@ -295,6 +295,9 @@ class LoadHoursStrategy(BidEnabledStrategy):
                 self._one_sided_market_event_tick(market)
             elif ConstSettings.IAASettings.MARKET_TYPE == 2 or \
                     ConstSettings.IAASettings.MARKET_TYPE == 3:
+                # if self.area.current_tick % 60 == 58:
+                #     self.bid_update.post_expensive_bid(market, self)
+                # else:
                 self._double_sided_market_event_tick(market)
 
         self.bid_update.increment_update_counter_all_markets(self)

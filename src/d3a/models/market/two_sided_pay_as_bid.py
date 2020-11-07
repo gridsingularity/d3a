@@ -206,10 +206,16 @@ class TwoSidedPayAsBid(OneSidedMarket):
         #    since the most affordable offers will be allocated for the most aggressive buyers.
 
         # Sorted bids in descending order
-        sorted_bids = self.sorting(self.bids, True)
+
+        sorted_bids = self.sorting(self.bids.values(), True)
 
         # Sorted offers in descending order
-        sorted_offers = self.sorting(self.offers, True)
+
+        from copy import copy
+        offers = copy(list(self.offers.values()))
+        offers = self.sort_by_source(offers)
+
+        sorted_offers = self.sorting(reversed(offers), True)
 
         already_selected_bids = set()
         offer_bid_pairs = []

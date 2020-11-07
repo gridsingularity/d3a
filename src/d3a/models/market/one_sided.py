@@ -136,7 +136,6 @@ class OneSidedMarket(Market):
             else offer.price
 
     def split_offer(self, original_offer, energy, orig_offer_price):
-
         self.offers.pop(original_offer.id, None)
         # same offer id is used for the new accepted_offer
         original_accepted_price = energy / original_offer.energy * orig_offer_price
@@ -206,6 +205,7 @@ class OneSidedMarket(Market):
             offer_or_id = offer_or_id.id
         offer = self.offers.pop(offer_or_id, None)
         if offer is None:
+            print(f"ERROR {offer_or_id}")
             raise OfferNotFoundException()
 
         if energy is None:
@@ -228,7 +228,8 @@ class OneSidedMarket(Market):
             elif energy < offer.energy:
                 # partial energy is requested
 
-                accepted_offer, residual_offer = self.split_offer(offer, energy, orig_offer_price)
+                accepted_offer, residual_offer = self.split_offer(
+                    offer, energy, orig_offer_price)
 
                 fee_price, trade_price = self.determine_offer_price(
                     energy_portion=energy / accepted_offer.energy, energy=energy,

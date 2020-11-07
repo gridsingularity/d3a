@@ -21,6 +21,7 @@ import os
 import importlib
 import logging
 import glob
+import traceback
 from math import isclose
 from pendulum import duration, today, from_format
 from behave import given, when, then
@@ -646,7 +647,7 @@ def export_logic(context, flag):
 def run_sim(context, scenario, total_duration, slot_length, tick_length, market_count):
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.CRITICAL)
+    root_logger.setLevel(logging.INFO)
 
     simulation_config = SimulationConfig(duration(hours=int(total_duration)),
                                          duration(minutes=int(slot_length)),
@@ -681,6 +682,7 @@ def run_sim(context, scenario, total_duration, slot_length, tick_length, market_
         context.simulation.run()
     except Exception as er:
         root_logger.critical(f"Error reported when running the simulation: {er}")
+        root_logger.critical(traceback.format_exc())
         context.sim_error = er
 
 
@@ -751,7 +753,7 @@ def test_accumulated_energy(context):
         assert isclose(area_net_energy, house_net, rel_tol=1e-02)
         net_energy += house_net
 
-    assert isclose(net_energy, 0, abs_tol=1e-10)
+    assert isclose(net_energy, 0, abs_tol=1e-10), net_energy
 
 
 @then('the energy bills report the correct external traded energy and price')

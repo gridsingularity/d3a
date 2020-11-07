@@ -94,9 +94,19 @@ class IAAEngine:
         self.forwarded_offers.pop(offer_info.source_offer.id, None)
 
     def tick(self, *, area):
+        self.ignored_offers.clear()
         self.propagate_offer(area.current_tick)
 
     def propagate_offer(self, current_tick):
+        offer_info_to_delete = []
+        for offer_id, offer_info in self.forwarded_offers.items():
+            if offer_info.source_offer.id not in self.markets.source.offers or \
+                    offer_info.target_offer.id not in self.markets.target.offers:
+                offer_info_to_delete.append(offer_info.source_offer)
+                offer_info_to_delete.append(offer_info.target_offer)
+        for o in offer_info_to_delete:
+            self._delete_forwarded_offer_entries(o)
+
         # Store age of offer
         for offer in self.markets.source.offers.values():
             if offer.id not in self.offer_age:
@@ -175,6 +185,9 @@ class IAAEngine:
                 f"[{self.markets.source.time_slot_str}] Offer accepted {trade_source}")
 
             self._delete_forwarded_offer_entries(offer_info.source_offer)
+            if offer_info.target_offer.id in self.forwarded_offers:
+                self.owner.delete_offer(self.markets.target, offer_info.target_offer)
+                self._delete_forwarded_offer_entries(offer_info.target_offer)
             self.offer_age.pop(offer_info.source_offer.id, None)
 
         elif trade.offer.id == offer_info.source_offer.id:
@@ -187,6 +200,7 @@ class IAAEngine:
                 self.owner.log.error("Error deleting InterAreaAgent offer: {}".format(ex))
 
             self._delete_forwarded_offer_entries(offer_info.source_offer)
+            self._delete_forwarded_offer_entries(offer_info.target_offer)
             self.offer_age.pop(offer_info.source_offer.id, None)
         else:
             raise RuntimeError("Unknown state. Can't happen")
@@ -210,8 +224,10 @@ class IAAEngine:
             try:
                 self.owner.delete_offer(self.markets.target, offer_info.target_offer)
                 self._delete_forwarded_offer_entries(offer_info.source_offer)
+                self._delete_forwarded_offer_entries(offer_info.target_offer)
             except MarketException:
-                self.owner.log.exception("Error deleting InterAreaAgent offer")
+                self.owner.log.error("Error deleting InterAreaAgent offer")
+
         # TODO: Should potentially handle the flip side, by not deleting the source market offer
         # but by deleting the offered_offers entries
 
@@ -220,12 +236,19 @@ class IAAEngine:
         if market is None:
             return
 
+        if accepted_offer.id in self.ignored_offers:
+            return
+
         if market == self.markets.target and accepted_offer.id in self.forwarded_offers:
             # offer was split in target market, also split in source market
-
-            local_offer = self.forwarded_offers[original_offer.id].source_offer
+            offer_info = self.forwarded_offers[accepted_offer.id]
+            local_offer = offer_info.source_offer
             original_offer_price = local_offer.original_offer_price \
                 if local_offer.original_offer_price is not None else local_offer.price
+
+            # self.ignored_offers.add(offer_info.source_offer.id)
+            self.ignored_offers.add(offer_info.target_offer.id)
+            # self.ignored_offers.add(residual_offer.id)
 
             local_split_offer, local_residual_offer = \
                 self.markets.source.split_offer(local_offer, accepted_offer.energy,
@@ -237,12 +260,24 @@ class IAAEngine:
 
         elif market == self.markets.source and accepted_offer.id in self.forwarded_offers:
             # offer was split in source market, also split in target market
-            if not self.owner.usable_offer(accepted_offer) or \
-                    self.owner.name == accepted_offer.seller:
+            # if not self.owner.usable_offer(accepted_offer) or \
+            #         self.owner.name == accepted_offer.seller:
+            #     return
+
+            if self.owner.engines[0] == self:
+                other_engine = self.owner.engines[1]
+            else:
+                other_engine = self.owner.engines[0]
+
+            if accepted_offer.id in other_engine.forwarded_offers:
                 return
 
-            local_offer = self.forwarded_offers[original_offer.id].source_offer
+            offer_info = self.forwarded_offers[original_offer.id]
+            self.ignored_offers.add(offer_info.source_offer.id)
+            self.ignored_offers.add(offer_info.target_offer.id)
+            self.ignored_offers.add(residual_offer.id)
 
+            local_offer = offer_info.target_offer
             original_offer_price = local_offer.original_offer_price \
                 if local_offer.original_offer_price is not None else local_offer.price
 

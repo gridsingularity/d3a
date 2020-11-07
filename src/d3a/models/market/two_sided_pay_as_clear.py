@@ -111,7 +111,7 @@ class TwoSidedPayAsClear(TwoSidedPayAsBid):
                 return clearing[-1].rate, clearing[-1].energy
 
     def _perform_pay_as_clear_matching(self):
-        self.sorted_bids = self.sorting(self.bids, True)
+        self.sorted_bids = self.sorting(self.bids.values(), True)
 
         if len(self.sorted_bids) == 0 or len(self.sorted_offers) == 0:
             return
