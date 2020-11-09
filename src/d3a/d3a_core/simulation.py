@@ -27,6 +27,8 @@ import psutil
 import gc
 import sys
 import datetime
+from rq import Queue
+from redis import StrictRedis
 
 from pendulum import DateTime
 from pendulum import duration
@@ -63,6 +65,8 @@ log = getLogger(__name__)
 SLOWDOWN_FACTOR = 100
 SLOWDOWN_STEP = 5
 RANDOM_SEED_MAX_VALUE = 1000000
+
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost')
 
 
 class SimulationResetException(Exception):
@@ -610,7 +614,10 @@ def run_simulation(setup_module_name="", simulation_config=None, simulation_even
             redis_job_id=redis_job_id,
             **kwargs
         )
-
+        queue = Queue('results',
+                      connection=StrictRedis.from_url(REDIS_URL, retry_on_timeout=True))
+        queue.enqueue('config.results_jobss.your_func', redis_job_id)
+        print(f"redis_job_id: {redis_job_id}")
     except D3AException as ex:
         raise click.BadOptionUsage(ex.args[0])
 
